@@ -1,0 +1,13 @@
+.env
+.idea/
+.vscode/
+**/target/
+target/
+.env
+.env.*
+!.env.example
+*.log
+*.bak
+*.zip
+.idea/
+.vscode/

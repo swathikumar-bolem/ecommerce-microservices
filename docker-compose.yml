@@ -1,0 +1,93 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-labpass}
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab"]
+      interval: 5s
+      retries: 15
+  user-service:
+    build: ./user-service
+    image: ${DOCKERHUB_USER:-local}/user-service:1.0.0
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/userdb
+      DB_USER: lab
+      DB_PASSWORD: ${DB_PASSWORD:-labpass}
+    depends_on:
+      postgres:
+        condition: service_healthy
+  product-service:
+    build: ./product-service
+    image: ${DOCKERHUB_USER:-local}/product-service:1.0.0
+    ports:
+      - "127.0.0.1:8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/productdb
+      DB_USER: lab
+      DB_PASSWORD: ${DB_PASSWORD:-labpass}
+    depends_on:
+      postgres:
+        condition: service_healthy
+  inventory-service:
+    build: ./inventory-service
+    image: ${DOCKERHUB_USER:-local}/inventory-service:1.0.0
+    ports:
+      - "127.0.0.1:8083:8083"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/inventorydb
+      DB_USER: lab
+      DB_PASSWORD: ${DB_PASSWORD:-labpass}
+    depends_on:
+      postgres:
+        condition: service_healthy
+  order-service:
+    build: ./order-service
+    image: ${DOCKERHUB_USER:-local}/order-service:1.0.0
+    ports:
+      - "127.0.0.1:8084:8084"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/orderdb
+      DB_USER: lab
+      DB_PASSWORD: ${DB_PASSWORD:-labpass}
+      USER_URL: http://user-service:8081
+      PRODUCT_URL: http://product-service:8082
+      INVENTORY_URL: http://inventory-service:8083
+      PAYMENT_URL: http://payment-service:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+  payment-service:
+    build: ./payment-service
+    image: ${DOCKERHUB_USER:-local}/payment-service:1.0.0
+    ports:
+      - "127.0.0.1:8085:8085"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/paymentdb
+      DB_USER: lab
+      DB_PASSWORD: ${DB_PASSWORD:-labpass}
+    depends_on:
+      postgres:
+        condition: service_healthy
+  frontend:
+    build: ./frontend
+    image: ${DOCKERHUB_USER:-local}/ecommerce-frontend:1.1.0
+    ports:
+      - "80:80"
+    depends_on:
+      - user-service
+      - product-service
+      - inventory-service
+      - order-service
+      - payment-service
+
+volumes:
+  pgdata:
+
